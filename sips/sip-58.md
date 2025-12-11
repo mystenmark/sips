@@ -16,7 +16,7 @@
 Sui Address Balances provide a canonical balance for each `(SuiAddress, Balance<T>)` pair.
 This simplifies management of fungible assets, which currently behave more like a UTXO system in Sui, and require indexing, coin-selection logic, smashing, and so on.
 Sui will retain its existing object-centric model for all non-fungible assets (NFTs, Capabilities, DeFi pools, etc).
-Crucially, while this system may appear similar to the native functionality of account-based L1s, it does not rely on any account-based locking, and hence offers unlimited parallelism of both deposits and withdraws.
+Crucially, while this system may appear similar to the native functionality of account-based L1s, it does not rely on any account-based locking, and hence offers unlimited parallelism of both deposits and withdrawals.
 
 
 ## Motivation
@@ -32,19 +32,19 @@ Drawbacks:
 - Complex indexing required to determine the total amount of currency owned by a given address.
 - Client-side coin selection logic.
 - Multiple parallel clients using the same address must synchronize somehow in order to avoid equivocation.
-- Transaction construction is inherently stateful: Clients must know the latest state of all owned objects (including The Gas Coin) in order to build a valid transaction.
+- Transaction construction is inherently stateful: Clients must know the latest state of all owned objects (including the gas coin) in order to build a valid transaction.
 
 The address balances system solves all of these drawbacks without giving up any of the benefits.
 It permits:
 - Parallelism for both deposits and withdrawals without account-based locking.
-- Automatic merging of all deposits to an address into a single canonical balance owned that address.
+- Automatic merging of all deposits to an address into a single canonical balance owned by that address.
 - Payment of gas from an address's SUI balance. (This permits stateless transaction construction.)
 
 ## Specification
 
-SUI address balances are built using the following components:
+Sui address balances are built using the following components:
 - The "accumulator" system which supports parallel deposits and withdrawals.
-- Extensions to the Transaction format, and a Move API which allow deposits and withdrawals
+- Extensions to the Transaction format, and a Move API which allow deposits and withdrawals.
 - A backward compatibility layer for supporting old dApps which do not understand address balances.
 
 ### Accumulator System
@@ -63,29 +63,29 @@ Settlement transactions are system transactions which update the values of each 
 The Address Balance system is built on the accumulator system, with the following additional properties:
 - Any transaction can merge (deposit) to any accumulator.
 - Only the owner of an accumulator can split (withdraw) from it.
-- `T` must be a type of the form form `0x2::balance::Balance<S>`, that is, only standard currencies can be sent using address balances.
+- `T` must be a type of the form `0x2::balance::Balance<S>`, that is, only standard currencies can be sent using address balances.
 
 The accumulator system is not currently extensible by user code, but it may be in the future if there are compelling use cases for this.
 
 
 ### Transaction Format
 
-Transactions gain a new type of `CallArg` called `CallArg::FundsWitdrawal` which expresses an attempted reservation from an address balance.
-`CallArg::FundsWitdrawal` specifies the amount of the reservation, the type of currency being reserved, and the owner of the funds (typically the transaction sender).
+Transactions gain a new type of `CallArg` called `CallArg::FundsWithdrawal` which expresses an attempted reservation from an address balance.
+`CallArg::FundsWithdrawal` specifies the amount of the reservation, the type of currency being reserved, and the owner of the funds (typically the transaction sender).
 
 At execution time, all `CallArg::FundsWithdrawal` inputs are converted into `0x2::funds_accumulator::Withdrawal<T>` objects.
-These objects behave similary to `0x2::balance::Balance<T>` in that they have `split` and `join` operations.
+These objects behave similarly to `0x2::balance::Balance<T>` in that they have `split` and `join` operations.
 They can be converted into `0x2::balance::Balance<T>` via the `redeem()` method.
 Withdrawals are not actually considered to have been withdrawn unless redeemed.
 In other words, if you create a `Withdrawal<T>` but do not `redeem()` it, your balance will not change.
 
 The purpose of the reservation system is two-fold:
 - It allows signers of transactions to easily verify the maximum amount of outflows from their account before signing a transaction.
-- It allows the scheduler to avoid scheduling a transaction or set of transactions that could cause underflow of any account. Because the scheduler guarantees that underflow cannot occur, the system does not require any account-level locking at execution time for safety. This results in unlimited parallelism for withdraws.
+- It allows the scheduler to avoid scheduling a transaction or set of transactions that could cause underflow of any account. Because the scheduler guarantees that underflow cannot occur, the system does not require any account-level locking at execution time for safety. This results in unlimited parallelism for withdrawals.
 
 ### Move API
 
-The Move API consists of the following three functions
+The Move API consists of the following three functions:
 
         /// Send a `Balance` to an address's funds accumulator.
         public fun send_funds<T>(balance: Balance<T>, recipient: address) {
@@ -113,7 +113,7 @@ The Move API consists of the following three functions
 1. Pass a `FundsWithdrawal` as a transaction input. 
 2. Call `withdraw_funds_from_object` - more on this below.
 
-When `redeem_funds()` is called, an accumulator event is emitted which marks the funds as withdrawn. This withdraw is _settled_ by the next settlement transaction.
+When `redeem_funds()` is called, an accumulator event is emitted which marks the funds as withdrawn. This withdrawal is _settled_ by the next settlement transaction.
 
 ### Object withdrawals.
 
@@ -128,8 +128,8 @@ Because `withdraw_funds_from_object` takes a `&mut UID` argument, object-owned b
 Rather than requiring a coin object to pay gas, Address Balances allow clients to pay for their gas from the sender or sponsor's `SUI` balance.
 This is done by leaving the `gas_data.payment` vector empty.
 The remaining fields in `gas_data` (particularly `budget`) are sufficient to construct an implicit `FundsWithdrawal` representing the gas payment.
-This withdraw is treated exactly the same as any other withdrawal by the scheduler.
-After execution, a withdraw event is emitted to cover the gas cost of the transaction.
+This withdrawal is treated exactly the same as any other withdrawal by the scheduler.
+After execution, a withdrawal event is emitted to cover the gas cost of the transaction.
 
 Prior to this feature, Sui transactions necessarily had at least one owned object: the gas coin.
 This requires clients to have an up to date ObjectRef for their gas coin.
@@ -144,7 +144,7 @@ Clients no longer need to manage a pool of gas objects in order to send concurre
 
 ### Replay prevention
 
-The presence of an owned objects in a transaction offers durable replay protection.
+The presence of any owned object in a transaction offers durable replay protection.
 This is because a given owned object version cannot be consumed by more than one transaction.
 Owned objects also give cross-chain replay prevention, since it is impossible for any `ObjectRef` to be valid on two different networks.
 Without the presence of an owned object, transactions on Sui would be replayable over time, and across networks, a serious issue for safety and security.
@@ -155,7 +155,7 @@ Replay prevention for stateless transactions is achieved as follows:
 2. Stateless transactions specify a 2-epoch window of validity. That is, they must declare that they are valid only in epoch N and N+1.
 3. Stateless transactions must specify the network on which they are valid.
 
-With these two constraints, validators can reject any valid transaction that has already been executed.
+With these three constraints, validators can reject any valid transaction that has already been executed.
 If the current epoch is not within the transactions validity window, then the transaction can be considered invalid and rejected immediately.
 
 The above is achieved via [TransactionExpiration::ValidDuring](https://github.com/MystenLabs/sui/blob/4708a2b395fbe3446a360910f863efcbbc08e27f/crates/sui-types/src/transaction.rs#L1888).
@@ -168,21 +168,21 @@ With gas coins, sponsorship usually requires a flow like the following:
 
 1. User builds transaction, leaves gas payment empty, and sets `gas_data.owner` to the sponsor address.
 2. User sends transaction to the sponsor.
-2. Sponsor attaches gas coin, returns transaction to user.
-3. User signs the now-complete transaction and returns it to the sponsor.
-4. Sponsor signs the transaction.
-5. Sponsor either submits the transaction to the network, or returns it to the user for submission.
+3. Sponsor attaches gas coin, returns transaction to user.
+4. User signs the now-complete transaction and returns it to the sponsor.
+5. Sponsor signs the transaction.
+6. Sponsor either submits the transaction to the network, or returns it to the user for submission.
 
 With address balances gas payments, the flow is simplified to:
-1. User signs transation, leaves gas payment empty, and sets `gas_data.owner` to the sponsor address.
+1. User signs transaction, leaves gas payment empty, and sets `gas_data.owner` to the sponsor address.
 2. User sends transaction to the sponsor.
 3. Sponsor signs the transaction.
-5. Sponsor either submits the transaction to the network, or returns it to the user for submission.
+4. Sponsor either submits the transaction to the network, or returns it to the user for submission.
 
 Not only does this eliminate round trips from the process, it also protects the sponsor from the risk of having its gas coins locked by equivocating users.
-This opens the possibility of public gas stations (as opposed to the permissioned services that typcially do sponsorship today), as follows:
+This opens the possibility of public gas stations (as opposed to the permissioned services that typically do sponsorship today), as follows:
 
-1. User constructs a sponsored trasnaction as described above, but the also include a transfer of `USDC` or some other asset to the sponsor's address as one of the commands.
+1. User constructs a sponsored transaction as described above, but also includes a transfer of `USDC` or some other asset to the sponsor's address as one of the commands.
 2. Sponsor can now sign and execute the transaction in order to receive the offered payment.
 
 _There are many issues around gas stations which are beyond the scope of this SIP.
@@ -225,12 +225,12 @@ Any such coins will be transferred back to the originating Address Balance at th
 
 ### JSON-RPC backward compatibility
 
-There may be existing dApps and wallets that cannot or will not upgrade to a recent versions of the SDK, and hence may lack awareness of Address Balances.
+There may be existing dApps and wallets that cannot or will not upgrade to recent versions of the SDK, and hence may lack awareness of Address Balances.
 To such clients, funds held in Address Balances will be invisible.
 
 In order to prevent breaking old clients, we will add a backward compatibility layer to the jsonrpc API.
 This layer will present a "fake" coin to the client which appears to hold the Address Balance funds for each currency type.
-This fake coin will be interpreted by validators as an `FundsWithdrawal` arg, allowing old clients to spend funds held within address balances.
+This fake coin will be interpreted by validators as a `FundsWithdrawal` arg, allowing old clients to spend funds held within address balances.
 
 ## Test Cases
 
