@@ -173,11 +173,42 @@ With gas coins, sponsorship usually requires a flow like the following:
 5. Sponsor signs the transaction.
 6. Sponsor either submits the transaction to the network, or returns it to the user for submission.
 
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as Sponsor
+    participant N as Network
+
+    Note over U,N: Gas Coins Flow (Old)
+    U->>U: Build transaction<br/>(no gas coin)
+    U->>S: Send transaction
+    S->>S: Attach gas coin
+    S->>U: Return transaction
+    U->>U: Sign transaction
+    U->>S: Return signed transaction
+    S->>S: Sign transaction
+    S->>N: Submit transaction
+```
+
+
 With address balances gas payments, the flow is simplified to:
 1. User signs transaction, leaves gas payment empty, and sets `gas_data.owner` to the sponsor address.
 2. User sends transaction to the sponsor.
 3. Sponsor signs the transaction.
 4. Sponsor either submits the transaction to the network, or returns it to the user for submission.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as Sponsor
+    participant N as Network
+
+    Note over U,N: Address Balances Flow (New)
+    U->>U: Sign transaction<br/>(no gas payment)
+    U->>S: Send signed transaction
+    S->>S: Sign transaction
+    S->>N: Submit transaction
+```
 
 Not only does this eliminate round trips from the process, it also protects the sponsor from the risk of having its gas coins locked by equivocating users.
 This opens the possibility of public gas stations (as opposed to the permissioned services that typically do sponsorship today), as follows:
