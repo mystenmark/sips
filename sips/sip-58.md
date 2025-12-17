@@ -40,6 +40,10 @@ It permits:
 - Automatic merging of all deposits to an address into a single canonical balance owned by that address.
 - Payment of gas from an address's SUI balance. (This permits stateless transaction construction.)
 
+However there are a few small risks/drawbacks to mention:
+- Some users or clients may get confused by the fact that funds can be stored among zero or more coins **and** an address balance as well.
+- During the transition period, there may be some confusion about the best way to transfer funds, or the best way to design contracts.
+
 ## Specification
 
 Sui address balances are built using the following components:
@@ -53,6 +57,8 @@ Accumulators are a new concept in Sui which allows the construction of a scalabl
 The accumulator system allows values of some type `T` to be associated with a `(SuiAddress, T)` tuple.
 The given `SuiAddress` may be a wallet address or an object ID.
 A given `(SuiAddress, T): Value` record is called an accumulator.
+Accumulators are stored as dynamic fields under the root accumulator object (id `0xacc`).
+
 Values of type `T` must be "mergeable" and/or "splittable" via some commutative operation (such as addition/subtraction).
 Transactions may either merge (deposit) or split (withdraw) from an accumulator.
 This is done by emitting "accumulator events" rather than writing to objects.
@@ -66,7 +72,6 @@ The Address Balance system is built on the accumulator system, with the followin
 - `T` must be a type of the form `0x2::balance::Balance<S>`, that is, only standard currencies can be sent using address balances.
 
 The accumulator system is not currently extensible by user code, but it may be in the future if there are compelling use cases for this.
-
 
 ### Transaction Format
 
