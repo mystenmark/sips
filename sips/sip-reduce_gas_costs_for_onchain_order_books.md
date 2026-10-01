@@ -13,12 +13,14 @@
 
 ## Abstract
 
-This SIP reduces two gas charges to 1% of their current values:
+The purpose of this SIP is to make it much cheaper to operate an on-chain orderbook. Because orderbooks require constant requoting by market makers, even small amounts of gas add up rapidly.
+
+The cost reductions come from two places:
 
 1. The non-refundable storage fee. The protocol keeps this fee from the storage rebate of every object that a transaction mutates or deletes. It is currently 1% of the rebate. This SIP lowers it to 0.01%.
 2. The per-byte read charge for Move package inputs. The protocol charges this fee on the full size of every non-system package that a transaction calls. It is currently 15 internal gas units per byte. This SIP lowers it to 0.15 internal gas units per byte.
 
-Neither charge corresponds to a cost that validators incur today. Both charges grow with the size of the objects and packages that an application uses, and they do not depend on how much work a transaction does. Onchain order books pay both charges on every transaction, because each order rewrites the same shared objects and calls into a large package. For the example transaction below, the two charges are 95% of what the sender pays. With this SIP, the net cost of that transaction falls from 412,680 MIST to 102,417 MIST.
+Neither charge reflects a real cost born by validators today. The non-refundable storage fee was intended to pay for storage that is not reclaimed when objects are deleted. However, validators do not store any long-term data other than objects. Within an epoch, they must store transactions, effects, and other data. But since this data has a limited lifetime on the validators (that is, future validators are not burdened with work incurred by past validators), it can be paid for by computate charges.
 
 ## Motivation
 
@@ -36,7 +38,7 @@ That condition does not hold on Sui today. Validators prune transactions, effect
 
 Before execution, the protocol charges each input object `obj_access_cost_read_per_byte` (15 internal gas units) per byte of its metered size. Every package that a transaction's `MoveCall` commands name, including packages that appear only in type arguments, counts as an input object. The charge skips system packages (`0x1`, `0x2`, `0x3`, and so on). The protocol charges the package's full size on every transaction, whether or not the validator already holds the package in memory.
 
-Validators do not pay a per-transaction cost that grows with package size. Packages are immutable and validators cache them. As a result, the charge does not reflect how much resource a transaction uses. It penalizes applications for how large their code is. The maximum package size is 100 KiB, so each package a transaction names can cost up to about 1,536 gas units. That is 153,600 MIST at a gas price of 100, even when the call does almost no work. This gives developers a reason to split applications into many small packages or to leave functionality out. Neither of these helps the network.
+Validators do not pay a per-transaction cost that grows with package size. Packages are immutable and validators cache them. While there may be some marginal cost associated with larger packages, it is negligible today. As a result, even a trivial function call (such as `fun identity<T>(f: T): T { f }`) into a large package can be quite expensive. Not only does this charge grossly inflate the cost of many transactions, it also makes it futile to optimize compute gas usage in most cases.
 
 ### Example transaction
 
@@ -158,7 +160,10 @@ Transactions become cheaper, and none become more expensive. Applications that s
 
 ## Reference Implementation
 
-A reference implementation will be linked here.
+- Non-refundable storage fee: https://github.com/MystenLabs/sui/pull/28223
+- Package read charge: https://github.com/MystenLabs/sui/pull/28224
+
+Both changes are enabled only on devnet in the reference implementation.
 
 ## Security Considerations
 
