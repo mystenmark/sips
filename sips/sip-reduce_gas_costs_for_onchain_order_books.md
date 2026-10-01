@@ -163,8 +163,6 @@ Transactions become cheaper, and none become more expensive. Applications that s
 - Non-refundable storage fee: https://github.com/MystenLabs/sui/pull/28223
 - Package read charge: https://github.com/MystenLabs/sui/pull/28224
 
-Both changes are enabled only on devnet in the reference implementation.
-
 ## Security Considerations
 
 **Storage fund inflow.** With a lower rate, rewrites and deletions add less to the storage fund's non-refundable balance. Storage deposits for live objects stay in the fund as before, so the fund continues to hold at least the storage fees for all live objects. The fund also keeps receiving reinvested staking rewards.
