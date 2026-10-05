@@ -18,7 +18,7 @@ The purpose of this SIP is to make it much cheaper to operate an on-chain orderb
 The cost reductions come from two places:
 
 1. The non-refundable storage fee. The protocol keeps this fee from the storage rebate of every object that a transaction mutates or deletes. It is currently 1% of the rebate. This SIP lowers it to 0.01%.
-2. The per-byte read charge for Move package inputs. The protocol charges this fee on the full size of every non-system package that a transaction calls. It is currently 15 internal gas units per byte. This SIP lowers it to 0.15 internal gas units per byte.
+2. The per-byte read charge for Move package inputs. The protocol charges this fee on the full size of every non-system package that a transaction calls. It is currently 15 internal gas units per byte. This SIP lowers it to 154 internal gas units per KiB (about 0.15 per byte).
 
 Neither charge reflects a real cost born by validators today. The non-refundable storage fee was intended to pay for storage that is not reclaimed when objects are deleted. However, validators do not store any long-term data other than objects. Within an epoch, they must store transactions, effects, and other data. But since this data has a limited lifetime on the validators (that is, future validators are not burdened with work incurred by past validators), it can be paid for by computate charges.
 
@@ -93,7 +93,7 @@ non_refundable_storage_fee = storage_rebate − sender_rebate
 
 ### Package read charge
 
-Add a protocol configuration parameter `obj_access_cost_read_per_package_kb`, which is the read charge for package inputs in internal gas units per 1,000 bytes. Set it to `150`. That is 1% of the current rate of 15 internal gas units per byte.
+Add a protocol configuration parameter `obj_access_cost_read_per_package_kb`, which is the read charge for package inputs in internal gas units per KiB (1,024 bytes). Set it to `154`. One percent of the current rate of 15 internal gas units per byte is 153.6 per KiB, which this SIP rounds to the nearest integer.
 
 When the parameter is set, the input read charge becomes:
 
@@ -101,12 +101,12 @@ When the parameter is set, the input read charge becomes:
 object_bytes  = Σ size(o) for each non-package input object o
 package_bytes = Σ size(p) for each non-system package input p
 charge = object_bytes × obj_access_cost_read_per_byte
-       + ceil(package_bytes × obj_access_cost_read_per_package_kb / 1000)
+       + ceil(package_bytes × obj_access_cost_read_per_package_kb / 1024)
 ```
 
 The charge for non-package inputs does not change. System packages stay exempt.
 
-The existing per-byte parameter only accepts integers, so it cannot express 0.15 internal units per byte. That is why this change adds a separate parameter rather than adjusting the existing one.
+The existing per-byte parameter only accepts integers, so it cannot express about 0.15 internal units per byte. That is why this change adds a separate parameter rather than adjusting the existing one.
 
 ### Effect on the example transaction
 
@@ -153,7 +153,7 @@ Transactions become cheaper, and none become more expensive. Applications that s
 
 ## Test Cases
 
-- A transaction that calls a non-system package of `N` bytes is charged `ceil(N × 150 / 1000)` internal gas units for that package, and the object read charge is unchanged.
+- A transaction that calls a non-system package of `N` bytes is charged `ceil(N × 154 / 1024)` internal gas units for that package, and the object read charge is unchanged.
 - A transaction that calls only system packages is charged the same as before.
 - A transaction that mutates an object without changing its size pays a non-refundable fee of `storage_rebate − round(storage_rebate × 0.9999)`.
 - A replay of transactions from earlier protocol versions produces the same effects as before.
