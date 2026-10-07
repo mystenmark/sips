@@ -98,13 +98,13 @@ Add a protocol configuration parameter `obj_access_cost_read_per_package_kb`, wh
 When the parameter is set, the input read charge becomes:
 
 ```
-object_bytes  = Σ size(o) for each non-package input object o
-package_bytes = Σ size(p) for each non-system package input p
-charge = object_bytes × obj_access_cost_read_per_byte
-       + ceil(package_bytes × obj_access_cost_read_per_package_kb / 1024)
+charge = Σ size(o) × obj_access_cost_read_per_byte
+             for each non-package input object o
+       + Σ ceil(size(p) × obj_access_cost_read_per_package_kb / 1024)
+             for each non-system package input p
 ```
 
-The charge for non-package inputs does not change. System packages stay exempt.
+Each input is charged separately, so the package charge is rounded up per package. The charge for non-package inputs does not change. System packages stay exempt.
 
 The existing per-byte parameter only accepts integers, so it cannot express about 0.15 internal units per byte. That is why this change adds a separate parameter rather than adjusting the existing one.
 
